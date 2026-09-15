@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>水果切切樂 Fruit Slice</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+  <h1>FRUIT_SLICE_</h1>
+
+  <!-- HUD 抬頭顯示器 -->
+  <div id="hud">
+    <div>SCORE: <span id="score">0</span></div>
+    <div id="combo"></div>
+    <div id="lives">♥♥♥</div>
+    <div>HIGH: <span id="highScore">0</span></div>
+  </div>
+
+  <!-- 遊戲畫布與遮罩容器 -->
+  <div id="gameWrap">
+    <canvas id="game" width="400" height="600"></canvas>
+
+    <!-- 開始遊戲遮罩 -->
+    <div id="startOverlay" class="show">
+      <h2>水果切切樂</h2>
+      <p>滑鼠拖曳劃過水果即可切開得分；也可用方向鍵 / WASD 移動刀鋒切水果。</p>
+      <p>千萬別切到炸彈，漏接水果會扣命，命歸零即 Game Over。水果有時會一次成群拋出，一刀連切可拿連擊加分！</p>
+      <p class="blink">按空白鍵開始</p>
+    </div>
+
+    <!-- 遊戲結束遮罩 -->
+    <div id="overlay">
+      <h2>GAME OVER</h2>
+      <p>得分：<span id="finalScore">0</span></p>
+      <p class="blink">按空白鍵重新開始</p>
+    </div>
+  </div>
+
+  <!-- 操作指引頁腳 -->
+  <footer>操作：滑鼠按住拖曳劃過水果切開得分，或用方向鍵 / WASD 移動刀鋒。切到炸彈立即失敗，漏接 3 顆水果也會失敗。</footer>
+
+  <!-- 現代 ES6 模組入口 -->
+  <script type="module" src="js/main.js"></script>
+</body>
+</html>
