@@ -28,7 +28,7 @@
 
   #hud {
     display: flex;
-    gap: 40px;
+    gap: 18px;
     font-size: 16px;
     width: 400px;
     max-width: 92vw;
@@ -48,6 +48,28 @@
     min-width: 80px;
     text-align: center;
     transition: opacity 0.15s linear;
+  }
+
+  #musicBtn {
+    background: transparent;
+    border: 1px solid #ff8c00;
+    color: #ffd27a;
+    border-radius: 4px;
+    padding: 2px 7px;
+    font-size: 14px;
+    cursor: pointer;
+    line-height: 1.2;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    outline: none;
+    transition: all 0.2s ease;
+    user-select: none;
+  }
+
+  #musicBtn:hover {
+    background: rgba(255, 140, 0, 0.25);
+    box-shadow: 0 0 8px #ff8c00;
   }
 
   #gameWrap {
@@ -77,6 +99,7 @@
     justify-content: center;
     gap: 10px;
     text-align: center;
+    cursor: pointer;
   }
 
   #overlay.show, #startOverlay.show { display: flex; }
@@ -119,11 +142,18 @@
 
 <h1>FRUIT_SLICE_</h1>
 
+<!-- 遊戲主題曲音訊 (支援多種路徑 fallback) -->
+<audio id="bgm" loop preload="auto">
+  <source src="assets/audio/bgm.mp3" type="audio/mpeg">
+  <source src="bgm.mp3" type="audio/mpeg">
+</audio>
+
 <div id="hud">
   <div>SCORE: <span id="score">0</span></div>
   <div id="combo"></div>
   <div id="lives">♥♥♥</div>
   <div>HIGH: <span id="highScore">0</span></div>
+  <button id="musicBtn" title="切換背景音樂" aria-label="Toggle BGM">🔊</button>
 </div>
 
 <div id="gameWrap">
@@ -158,6 +188,36 @@
   const comboEl = document.getElementById('combo');
   const overlay = document.getElementById('overlay');
   const startOverlay = document.getElementById('startOverlay');
+  const bgm = document.getElementById('bgm');
+  const musicBtn = document.getElementById('musicBtn');
+
+  let isMuted = false;
+
+  function playBgm() {
+    if (bgm && !isMuted) {
+      bgm.volume = 0.5;
+      bgm.play().catch(e => {
+        // 瀏覽器 Autoplay 限制時，等待使用者後續操作觸發
+        console.log("Audio waiting for user gesture:", e);
+      });
+    }
+  }
+
+  if (musicBtn) {
+    musicBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      isMuted = !isMuted;
+      if (isMuted) {
+        if (bgm) bgm.pause();
+        musicBtn.textContent = '🔇';
+      } else {
+        if (bgm) {
+          bgm.play().catch(() => {});
+        }
+        musicBtn.textContent = '🔊';
+      }
+    });
+  }
 
   const COMBO_WINDOW = 45; // frames allowed between slices to keep the combo alive
   const DIFFICULTY_RAMP_FRAMES = 1800; // ~30s at 60fps to reach max ramp
@@ -528,6 +588,7 @@
     resetState();
     running = true;
     gameStarted = true;
+    playBgm();
   }
 
   function moveCursor(x, y) {
