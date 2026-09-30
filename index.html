@@ -122,6 +122,48 @@
     max-width: 320px;
   }
 
+  .author-badge {
+    display: inline-block;
+    background: rgba(255, 140, 0, 0.16);
+    border: 1px solid rgba(255, 140, 0, 0.65);
+    color: #ffd27a;
+    font-size: 14px;
+    font-weight: bold;
+    padding: 4px 14px;
+    border-radius: 20px;
+    letter-spacing: 1.5px;
+    text-shadow: 0 0 6px #ff8c00;
+    box-shadow: 0 0 10px rgba(255, 140, 0, 0.25);
+    margin: 4px 0 6px 0;
+  }
+  .author-badge a {
+    color: #58a6ff;
+    text-decoration: underline;
+    text-underline-offset: 3px;
+  }
+  .author-badge a:hover {
+    color: #79c0ff;
+  }
+
+  .author-tag {
+    position: absolute;
+    bottom: 12px;
+    right: 14px;
+    font-size: 13px;
+    color: #ffd27a;
+    letter-spacing: 1.5px;
+    text-shadow: 0 0 6px #ff8c00;
+    opacity: 0.9;
+    pointer-events: auto;
+  }
+  .author-tag a {
+    color: #ffd27a;
+    text-decoration: none;
+  }
+  .author-tag a:hover {
+    text-decoration: underline;
+  }
+
   .blink {
     animation: blink 1s infinite step-start;
     color: #ffd27a;
@@ -142,10 +184,20 @@
 
 <h1>FRUIT_SLICE_</h1>
 
-<!-- 遊戲主題曲音訊 (支援多種路徑 fallback) -->
+<!-- 遊戲主題曲與音效 (支援多種格式 fallback) -->
 <audio id="bgm" loop preload="auto">
-  <source src="assets/audio/bgm.mp3" type="audio/mpeg">
   <source src="bgm.mp3" type="audio/mpeg">
+  <source src="assets/audio/bgm.mp3" type="audio/mpeg">
+</audio>
+<audio id="sliceSound" preload="auto">
+  <source src="slice.wav" type="audio/wav">
+  <source src="slice.mp3" type="audio/mpeg">
+  <source src="assets/audio/slice.wav" type="audio/wav">
+</audio>
+<audio id="bombSound" preload="auto">
+  <source src="bomb.wav" type="audio/wav">
+  <source src="bomb.mp3" type="audio/mpeg">
+  <source src="assets/audio/bomb.wav" type="audio/wav">
 </audio>
 
 <div id="hud">
@@ -161,14 +213,17 @@
 
   <div id="startOverlay" class="show">
     <h2>水果切切樂</h2>
+    <div class="author-badge">🎮 作者：<strong>77</strong> <span class="author-gh">(GitHub: <a href="https://github.com/sic333" target="_blank" rel="noopener">sic333</a>)</span></div>
     <p>滑鼠拖曳劃過水果即可切開得分；也可用方向鍵 / WASD 移動刀鋒切水果。</p>
     <p>千萬別切到炸彈，漏接水果會扣命，命歸零即 Game Over。水果有時會一次成群拋出，一刀連切可拿連擊加分！</p>
     <p class="blink">點一下畫面開始（或按空白鍵）</p>
+    <div class="author-tag">作者：77 ｜ GitHub: <a href="https://github.com/sic333" target="_blank" rel="noopener">sic333</a></div>
   </div>
 
   <div id="overlay">
     <h2>GAME OVER</h2>
     <p>得分：<span id="finalScore">0</span></p>
+    <div class="author-badge" style="font-size:12px; margin-top:4px;">作者：77 (GitHub: <a href="https://github.com/sic333" target="_blank" rel="noopener">sic333</a>)</div>
     <p class="blink">點一下畫面重新開始（或按空白鍵）</p>
   </div>
 </div>
@@ -189,15 +244,147 @@
   const overlay = document.getElementById('overlay');
   const startOverlay = document.getElementById('startOverlay');
   const bgm = document.getElementById('bgm');
+  const sliceAudio = document.getElementById('sliceSound');
+  const bombAudio = document.getElementById('bombSound');
   const musicBtn = document.getElementById('musicBtn');
 
   let isMuted = false;
 
+  // Web Audio Context for zero-latency procedural synth fallback
+  let audioCtx = null;
+  function getAudioContext() {
+    if (!audioCtx) {
+      const AudioCtxClass = window.AudioContext || window.webkitAudioContext;
+      if (AudioCtxClass) {
+        audioCtx = new AudioCtxClass();
+      }
+    }
+    if (audioCtx && audioCtx.state === 'suspended') {
+      audioCtx.resume();
+    }
+    return audioCtx;
+  }
+
+  function playSynthSlice() {
+    try {
+      const ctx = getAudioContext();
+      if (!ctx) return;
+      const now = ctx.currentTime;
+      const bufferSize = Math.floor(ctx.sampleRate * 0.16);
+      const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+      const output = buffer.getChannelData(0);
+      for (let i = 0; i < bufferSize; i++) {
+        output[i] = (Math.random() * 2 - 1) * Math.exp(-i / (ctx.sampleRate * 0.035));
+      }
+      const whiteNoise = ctx.createBufferSource();
+      whiteNoise.buffer = buffer;
+      const filter = ctx.createBiquadFilter();
+      filter.type = 'bandpass';
+      filter.frequency.setValueAtTime(3200, now);
+      filter.frequency.exponentialRampToValueAtTime(700, now + 0.14);
+      filter.Q.setValueAtTime(2.5, now);
+
+      const gain = ctx.createGain();
+      gain.gain.setValueAtTime(0.7, now);
+      gain.gain.exponentialRampToValueAtTime(0.01, now + 0.16);
+
+      whiteNoise.connect(filter);
+      filter.connect(gain);
+      gain.connect(ctx.destination);
+      whiteNoise.start(now);
+    } catch (e) {}
+  }
+
+  function playSynthBomb() {
+    try {
+      const ctx = getAudioContext();
+      if (!ctx) return;
+      const now = ctx.currentTime;
+      // Low bass drop
+      const osc = ctx.createOscillator();
+      const oscGain = ctx.createGain();
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(140, now);
+      osc.frequency.exponentialRampToValueAtTime(25, now + 0.6);
+      oscGain.gain.setValueAtTime(0.85, now);
+      oscGain.gain.exponentialRampToValueAtTime(0.01, now + 0.6);
+      osc.connect(oscGain);
+      oscGain.connect(ctx.destination);
+      osc.start(now);
+      osc.stop(now + 0.6);
+
+      // Noise explosion burst
+      const bufferSize = Math.floor(ctx.sampleRate * 0.7);
+      const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+      const output = buffer.getChannelData(0);
+      for (let i = 0; i < bufferSize; i++) {
+        output[i] = (Math.random() * 2 - 1) * Math.exp(-i / (ctx.sampleRate * 0.15));
+      }
+      const noise = ctx.createBufferSource();
+      noise.buffer = buffer;
+      const lowpass = ctx.createBiquadFilter();
+      lowpass.type = 'lowpass';
+      lowpass.frequency.setValueAtTime(650, now);
+      lowpass.frequency.exponentialRampToValueAtTime(80, now + 0.65);
+      const noiseGain = ctx.createGain();
+      noiseGain.gain.setValueAtTime(0.8, now);
+      noiseGain.gain.exponentialRampToValueAtTime(0.01, now + 0.7);
+      noise.connect(lowpass);
+      lowpass.connect(noiseGain);
+      noiseGain.connect(ctx.destination);
+      noise.start(now);
+    } catch (e) {}
+  }
+
+  // Slice audio pool for rapid multi-slice / combo slicing
+  const SLICE_POOL_SIZE = 8;
+  const slicePool = [];
+  for (let i = 0; i < SLICE_POOL_SIZE; i++) {
+    const a = new Audio('slice.wav');
+    a.volume = 0.85;
+    slicePool.push(a);
+  }
+  let slicePoolIndex = 0;
+
+  function playSliceSound() {
+    if (isMuted) return;
+    try {
+      getAudioContext();
+      const snd = slicePool[slicePoolIndex];
+      slicePoolIndex = (slicePoolIndex + 1) % SLICE_POOL_SIZE;
+      snd.currentTime = 0;
+      const p = snd.play();
+      if (p !== undefined) {
+        p.catch(() => playSynthSlice());
+      }
+    } catch (e) {
+      playSynthSlice();
+    }
+  }
+
+  const bombSound = new Audio('bomb.wav');
+  bombSound.volume = 0.95;
+
+  function playBombSound() {
+    if (isMuted) return;
+    try {
+      getAudioContext();
+      bombSound.currentTime = 0;
+      const p = bombSound.play();
+      if (p !== undefined) {
+        p.catch(() => playSynthBomb());
+      }
+    } catch (e) {
+      playSynthBomb();
+    }
+  }
+
   function playBgm() {
-    if (bgm && !isMuted) {
-      bgm.volume = 0.5;
+    if (isMuted) return;
+    getAudioContext();
+    if (bgm) {
+      bgm.volume = 0.45;
       bgm.play().catch(e => {
-        // 瀏覽器 Autoplay 限制時，等待使用者後續操作觸發
         console.log("Audio waiting for user gesture:", e);
       });
     }
@@ -363,12 +550,14 @@
       if (d < obj.radius + 4) {
         obj.sliced = true;
         if (obj.type === 'bomb') {
+          playBombSound();
           spawnParticles(obj.x, obj.y, '#333');
           comboCount = 0;
           comboFrames = COMBO_WINDOW + 1;
           comboEl.textContent = '';
           endGame();
         } else {
+          playSliceSound();
           if (comboFrames <= COMBO_WINDOW) {
             comboCount++;
           } else {
