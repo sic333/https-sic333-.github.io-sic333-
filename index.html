@@ -145,6 +145,35 @@
     color: #79c0ff;
   }
 
+  .bgm-source-link {
+    position: absolute;
+    bottom: 12px;
+    left: 14px;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 13px;
+    color: #ffd27a;
+    text-decoration: none;
+    background: rgba(255, 140, 0, 0.18);
+    border: 1px solid rgba(255, 140, 0, 0.55);
+    padding: 3px 10px;
+    border-radius: 16px;
+    letter-spacing: 1px;
+    text-shadow: 0 0 6px #ff8c00;
+    box-shadow: 0 0 8px rgba(255, 140, 0, 0.25);
+    transition: all 0.2s ease;
+    cursor: pointer;
+    z-index: 20;
+    pointer-events: auto;
+  }
+  .bgm-source-link:hover {
+    background: rgba(255, 140, 0, 0.38);
+    box-shadow: 0 0 14px #ff8c00;
+    transform: scale(1.06);
+    color: #ffffff;
+  }
+
   .author-tag {
     position: absolute;
     bottom: 12px;
@@ -217,6 +246,9 @@
     <p>滑鼠拖曳劃過水果即可切開得分；也可用方向鍵 / WASD 移動刀鋒切水果。</p>
     <p>千萬別切到炸彈，漏接水果會扣命，命歸零即 Game Over。水果有時會一次成群拋出，一刀連切可拿連擊加分！</p>
     <p class="blink">點一下畫面開始（或按空白鍵）</p>
+    <a href="https://opengameart.org/content/caketown-cuteplayful" target="_blank" rel="noopener noreferrer" class="bgm-source-link" title="點擊查看背景音樂出處：Matthew Pablo - Caketown">
+      🎵 <span>音樂來源</span>
+    </a>
     <div class="author-tag">作者：77 ｜ GitHub: <a href="https://github.com/sic333" target="_blank" rel="noopener">sic333</a></div>
   </div>
 
@@ -798,6 +830,9 @@
   }
 
   function handleStartTap(e) {
+    if (e.target && (e.target.closest('a') || e.target.closest('button'))) {
+      return;
+    }
     e.preventDefault();
     if (!running) startGame();
   }
